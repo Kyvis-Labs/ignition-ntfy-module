@@ -32,21 +32,14 @@ import com.inductiveautomation.ignition.gateway.localdb.persistence.PersistenceS
 import com.inductiveautomation.ignition.gateway.model.GatewayContext;
 import com.inductiveautomation.ignition.gateway.model.ProfileStatus;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.http.NameValuePair;
-import org.apache.http.client.entity.UrlEncodedFormEntity;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClientBuilder;
-import org.apache.http.message.BasicNameValuePair;
 import org.apache.log4j.Logger;
-import org.json.JSONObject;
 
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -58,7 +51,6 @@ public class NtfyNotificationProfile implements AlarmNotificationProfile {
     private final ScheduledExecutorService executor;
     private volatile ProfileStatus profileStatus = ProfileStatus.UNKNOWN;
     private Logger logger;
-    private final ObjectMapper objectMapper = new ObjectMapper();
 
     public NtfyNotificationProfile(final GatewayContext context,
                                      final AlarmNotificationProfileRecord profileRecord,
@@ -160,14 +152,15 @@ public class NtfyNotificationProfile implements AlarmNotificationProfile {
                     );
 
                     String ntfyUrl = String.format("%s/%s", serverUrl, topic);
-                    logger.info(ntfyUrl);
+
                     var builder = HttpRequest.newBuilder();
+
                     builder = builder
                             .uri(URI.create(ntfyUrl))
                             .header("Content-Type", "application/json")
+                            .timeout(Duration.ofSeconds(10))
                             .POST(HttpRequest.BodyPublishers.ofString(message));
                     
-
                     if (!title.isBlank()) {
                         builder.header("Title", title);
                     }
@@ -200,7 +193,6 @@ public class NtfyNotificationProfile implements AlarmNotificationProfile {
                     try {
 
                         final var response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-
                         if (!(response.statusCode() >= 200 && response.statusCode() <= 399)) {
                             logger.error("Error sending notification: status code=" + response.statusCode() + ", response=" + response.body());
                         }
@@ -223,7 +215,7 @@ public class NtfyNotificationProfile implements AlarmNotificationProfile {
     }
 
     private void audit(boolean success, String eventDesc, NotificationContext notificationContext) {
-        logger.info("auditing to %s".format(auditProfileName));
+        logger.debug(String.format("auditing to %s",auditProfileName));
         if (!StringUtils.isBlank(auditProfileName)) {
             try {
                 AuditProfile p = context.getAuditManager().getProfile(auditProfileName);
@@ -329,5 +321,4 @@ public class NtfyNotificationProfile implements AlarmNotificationProfile {
             return NtfyNotificationProfileType.NTFY.getContactType().equals(contactInfo.getContactType());
         }
     }
-
 }

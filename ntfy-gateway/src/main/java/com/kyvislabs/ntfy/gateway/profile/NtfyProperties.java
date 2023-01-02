@@ -126,7 +126,8 @@ public class NtfyProperties {
         MESSAGE.setDefaultValue(i18n("NtfyNotification." + "Properties.Message.DefaultValue"));
 
         TAGS.setExpressionSource(true);
-        
+        TAGS.setDefaultValue("");
+
         THROTTLED_MESSAGE.setExpressionSource(true);
         THROTTLED_MESSAGE.setDefaultValue(i18n("NtfyNotification." + "Properties.ThrottledMessage.DefaultValue"));
 
@@ -135,6 +136,7 @@ public class NtfyProperties {
                 + "Properties.TimeBetweenNotifications.DefaultValue"));
 
         TITLE.setExpressionSource(true);
+        TITLE.setDefaultValue("");
 
         PRIORITY.setDefaultValue("default");
         List<ConfigurationProperty.Option<String>> priorityOptions = new ArrayList<>();
@@ -152,9 +154,13 @@ public class NtfyProperties {
         TEST_MODE.setOptions(options);
 
         CLICK_ACTION.setExpressionSource(true);
+        CLICK_ACTION.setDefaultValue("");
         ATTACH.setExpressionSource(true);
+        ATTACH.setDefaultValue("");
         ACTIONS.setExpressionSource(true);
+        ACTIONS.setDefaultValue("");
         ICON.setExpressionSource(true);
+        ICON.setDefaultValue("");
 
     }
 
