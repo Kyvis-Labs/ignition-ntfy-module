@@ -41,3 +41,5 @@ build/
 
 # VSCode settings
 .vscode/
+
+*.sh

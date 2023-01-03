@@ -1,9 +1,5 @@
 package com.kyvislabs.ntfy.gateway.profile;
 
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonMappingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Predicate;
 import com.google.common.collect.Collections2;
 import com.google.common.collect.Lists;
@@ -23,6 +19,7 @@ import com.inductiveautomation.ignition.common.model.values.QualifiedValue;
 import com.inductiveautomation.ignition.common.sqltags.model.types.DataQuality;
 import com.inductiveautomation.ignition.common.user.ContactInfo;
 import com.inductiveautomation.ignition.common.user.ContactType;
+import com.inductiveautomation.ignition.common.user.User;
 import com.inductiveautomation.ignition.gateway.audit.AuditProfile;
 import com.inductiveautomation.ignition.gateway.audit.AuditRecord;
 import com.inductiveautomation.ignition.gateway.audit.AuditRecordBuilder;
@@ -47,19 +44,21 @@ import java.util.concurrent.ScheduledExecutorService;
 public class NtfyNotificationProfile implements AlarmNotificationProfile {
 
     private final GatewayContext context;
-    private String auditProfileName, profileName, serverUrl;
+    private String auditProfileName, profileName, serverUrl, callbackUrl, username, password;
     private final ScheduledExecutorService executor;
     private volatile ProfileStatus profileStatus = ProfileStatus.UNKNOWN;
     private Logger logger;
 
     public NtfyNotificationProfile(final GatewayContext context,
-                                     final AlarmNotificationProfileRecord profileRecord,
-                                     final NtfyNotificationProfileSettings settingsRecord) {
+            final AlarmNotificationProfileRecord profileRecord,
+            final NtfyNotificationProfileSettings settingsRecord) {
         this.context = context;
         this.executor = Executors.newSingleThreadScheduledExecutor();
         this.profileName = profileRecord.getName();
         this.serverUrl = settingsRecord.getServerUrl();
-
+        this.callbackUrl = settingsRecord.getCallbackUrl();
+        this.username = settingsRecord.getUsername();
+        this.password = settingsRecord.getPassword();
         this.logger = Logger.getLogger(String.format("Ntfy.%s.Profile", this.profileName));
 
         try (PersistenceSession session = context.getPersistenceInterface().getSession(settingsRecord.getDataSet())) {
@@ -87,8 +86,7 @@ public class NtfyNotificationProfile implements AlarmNotificationProfile {
                 NtfyProperties.ACTIONS,
                 NtfyProperties.ATTACH,
                 NtfyProperties.ICON,
-                NtfyProperties.TEST_MODE
-        );
+                NtfyProperties.TEST_MODE);
     }
 
     @Override
@@ -127,6 +125,15 @@ public class NtfyNotificationProfile implements AlarmNotificationProfile {
             String actions = evaluateStringExpression(notificationContext,NtfyProperties.ACTIONS);
             String icon = evaluateStringExpression(notificationContext,NtfyProperties.ICON);
             boolean testMode = notificationContext.getOrDefault(NtfyProperties.TEST_MODE);
+            if (!StringUtils.isBlank(callbackUrl)){
+                try {
+                    String ackAction = String.format("http, Ack Alarm, %s/system/ntfy?event=%s&user=%s, method=POST, clear=true ", callbackUrl, notificationContext.getAlarmEvents().get(0).getId().toString(),notificationContext.getUser().get(User.Username));
+                    actions = String.format("%s; %s",ackAction,actions);
+                    logger.info(clickAction);
+                }  catch (Exception ex) {
+                    logger.error("Error",ex);
+                }
+            }
 
             boolean success = true;
             if (testMode) {
@@ -160,32 +167,36 @@ public class NtfyNotificationProfile implements AlarmNotificationProfile {
                             .header("Content-Type", "application/json")
                             .timeout(Duration.ofSeconds(10))
                             .POST(HttpRequest.BodyPublishers.ofString(message));
-                    
-                    if (!title.isBlank()) {
+
+                    if (!StringUtils.isBlank(username) && !StringUtils.isBlank(password)){
+                        String valueToEncode = username + ":" + password;
+                        builder.header("Authentication", "Basic " + Base64.getEncoder().encodeToString(valueToEncode.getBytes()));
+                    } 
+                    if (!StringUtils.isBlank(title)) {
                         builder.header("Title", title);
                     }
 
-                    if (!tags.isBlank()) {
+                    if (!StringUtils.isBlank(tags)) {
                         builder.header("Tags", tags);
                     }
 
-                    if (!priority.isBlank()) {
+                    if (!StringUtils.isBlank(priority)) {
                         builder.header("Priority", priority);
                     }
 
-                    if (!clickAction.isBlank()) {
+                    if (!StringUtils.isBlank(clickAction)) {
                         builder.header("Click", clickAction);
                     }
 
-                    if (!attach.isBlank()) {
+                    if (!StringUtils.isBlank(attach)) {
                         builder.header("Attach", attach);
                     }
 
-                    if (!actions.isBlank()) {
+                    if (!StringUtils.isBlank(actions)) {
                         builder.header("Action", actions);
                     }
 
-                    if (!icon.isBlank()) {
+                    if (!StringUtils.isBlank(icon)) {
                         builder.header("Icon", icon);
                     }
 
@@ -215,7 +226,7 @@ public class NtfyNotificationProfile implements AlarmNotificationProfile {
     }
 
     private void audit(boolean success, String eventDesc, NotificationContext notificationContext) {
-        logger.debug(String.format("auditing to %s",auditProfileName));
+        logger.debug(String.format("auditing to %s", auditProfileName));
         if (!StringUtils.isBlank(auditProfileName)) {
             try {
                 AuditProfile p = context.getAuditManager().getProfile(auditProfileName);
@@ -245,15 +256,15 @@ public class NtfyNotificationProfile implements AlarmNotificationProfile {
         }
     }
 
-    private String evaluateStringExpression(NotificationContext notificationContext, BasicNotificationProfileProperty property) {
+    private String evaluateStringExpression(NotificationContext notificationContext,
+            BasicNotificationProfileProperty property) {
         Parser parser = new StringParser();
 
-        FallbackPropertyResolver resolver =
-                new FallbackPropertyResolver(context.getAlarmManager().getPropertyResolver());
+        FallbackPropertyResolver resolver = new FallbackPropertyResolver(
+                context.getAlarmManager().getPropertyResolver());
 
-        FormattedExpressionParseContext parseContext =
-                new FormattedExpressionParseContext(
-                        new AlarmEventCollectionExpressionParseContext(resolver, notificationContext.getAlarmEvents()));
+        FormattedExpressionParseContext parseContext = new FormattedExpressionParseContext(
+                new AlarmEventCollectionExpressionParseContext(resolver, notificationContext.getAlarmEvents()));
 
         String expressionString = null;
 
@@ -262,9 +273,8 @@ public class NtfyNotificationProfile implements AlarmNotificationProfile {
             boolean isThrottled = notificationContext.getAlarmEvents().size() > 1;
 
             if (isThrottled || StringUtils.isBlank(customMessage)) {
-                expressionString = isThrottled ?
-                        notificationContext.getOrDefault(NtfyProperties.THROTTLED_MESSAGE) :
-                        notificationContext.getOrDefault(NtfyProperties.MESSAGE);
+                expressionString = isThrottled ? notificationContext.getOrDefault(NtfyProperties.THROTTLED_MESSAGE)
+                        : notificationContext.getOrDefault(NtfyProperties.MESSAGE);
             } else {
                 expressionString = customMessage;
             }
@@ -313,7 +323,8 @@ public class NtfyNotificationProfile implements AlarmNotificationProfile {
     }
 
     /**
-     * A {@link Predicate} that returns true if a {@link ContactInfo}'s {@link ContactType} is Console.
+     * A {@link Predicate} that returns true if a {@link ContactInfo}'s
+     * {@link ContactType} is Console.
      */
     private static class IsNtfyContactInfo implements Predicate<ContactInfo> {
         @Override

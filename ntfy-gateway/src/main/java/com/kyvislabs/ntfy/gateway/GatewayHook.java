@@ -17,12 +17,12 @@ public class GatewayHook extends AbstractGatewayModuleHook implements ModuleServ
     public static final String MODULE_ID = "com.kyvislabs.ntfy";
     private final Logger logger = LoggerFactory.getLogger("Ntfy.Gateway.Hook");
 
-    private GatewayContext gatewayContext;
+    protected static GatewayContext gatewayContext;
     private volatile AlarmNotificationContext notificationContext;
 
     @Override
     public void setup(GatewayContext gatewayContext) {
-        this.gatewayContext = gatewayContext;
+        GatewayHook.gatewayContext = gatewayContext;
         BundleUtil.get().addBundle("NtfyNotification", getClass(), "NtfyNotification");
 
         gatewayContext.getModuleServicesManager().subscribe(AlarmNotificationContext.class, this);
@@ -41,6 +41,8 @@ public class GatewayHook extends AbstractGatewayModuleHook implements ModuleServ
                 
         gatewayContext.getUserSourceManager().registerContactType(NtfyNotificationProfileType.NTFY);
 
+        gatewayContext.getWebResourceManager().addServlet("ntfy", NtfyServlet.class);
+
         try {
             gatewayContext.getSchemaUpdater().updatePersistentRecords(NtfyNotificationProfileSettings.META);
         } catch (Exception e) {
@@ -55,7 +57,6 @@ public class GatewayHook extends AbstractGatewayModuleHook implements ModuleServ
 
     @Override
     public void startup(LicenseState licenseState) {
-
     }
 
     @Override
@@ -70,7 +71,7 @@ public class GatewayHook extends AbstractGatewayModuleHook implements ModuleServ
                 logger.error("Error removing notification profile.", e);
             }
         }
-
+        gatewayContext.getWebResourceManager().removeServlet("ntfy");
         BundleUtil.get().removeBundle("NtfyNotification");
         BundleUtil.get().removeBundle("NtfyNotificationProfileSettings");
     }
