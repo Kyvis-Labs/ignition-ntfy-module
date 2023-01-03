@@ -125,6 +125,7 @@ public class NtfyNotificationProfile implements AlarmNotificationProfile {
             String actions = evaluateStringExpression(notificationContext,NtfyProperties.ACTIONS);
             String icon = evaluateStringExpression(notificationContext,NtfyProperties.ICON);
             boolean testMode = notificationContext.getOrDefault(NtfyProperties.TEST_MODE);
+
             if (!StringUtils.isBlank(callbackUrl)){
                 try {
                     String ackAction = String.format("http, Ack Alarm, %s/system/ntfy?event=%s&user=%s, method=POST, clear=true ", callbackUrl, notificationContext.getAlarmEvents().get(0).getId().toString(),notificationContext.getUser().get(User.Username));
@@ -171,7 +172,8 @@ public class NtfyNotificationProfile implements AlarmNotificationProfile {
                     if (!StringUtils.isBlank(username) && !StringUtils.isBlank(password)){
                         String valueToEncode = username + ":" + password;
                         builder.header("Authentication", "Basic " + Base64.getEncoder().encodeToString(valueToEncode.getBytes()));
-                    } 
+                    }
+
                     if (!StringUtils.isBlank(title)) {
                         builder.header("Title", title);
                     }
@@ -193,6 +195,11 @@ public class NtfyNotificationProfile implements AlarmNotificationProfile {
                     }
 
                     if (!StringUtils.isBlank(actions)) {
+                        String[] parts = StringUtils.split(actions,";");
+                        if (parts.length > 3){
+                            parts = Arrays.copyOfRange(parts,0,3);
+                            actions = StringUtils.join(parts, ";");
+                        }
                         builder.header("Action", actions);
                     }
 
