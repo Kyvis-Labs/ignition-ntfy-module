@@ -21,15 +21,23 @@ public class NtfyNotificationProfileSettings extends PersistentRecord {
             ProfileId);
 
     public static final StringField ServerUrl = new StringField(META, "ServerUrl", SFieldFlags.SMANDATORY);
+    public static final StringField AckTopic = new StringField(META, "AckTopic");
 
     static final Category API = new Category("NtfyNotificationProfileSettings.Category.API", 1)
-            .include(ServerUrl);
+            .include(ServerUrl,AckTopic);
 
-    public static final LongField AuditProfileId = new LongField(META, "AuditProfileId");
+    public static final StringField Username = new StringField(META,"Username");
+    public static final StringField Password = new StringField(META,"Password");
+
+    static final Category Authentication = new Category("NtfyNotificationProfileSettings.Category.Authentication",2)
+        .include(Username,Password);
+
+        public static final LongField AuditProfileId = new LongField(META, "AuditProfileId");
     public static final ReferenceField<AuditProfileRecord> AuditProfile = new ReferenceField<>(
             META, AuditProfileRecord.META, "AuditProfile", AuditProfileId);
 
-    static final Category Auditing = new Category("NtfyNotificationProfileSettings.Category.Auditing", 2)
+
+    static final Category Auditing = new Category("NtfyNotificationProfileSettings.Category.Auditing", 3)
             .include(AuditProfile);
 
     static {
@@ -48,6 +56,18 @@ public class NtfyNotificationProfileSettings extends PersistentRecord {
 
     public String getServerUrl() {
         return getString(ServerUrl);
+    }
+
+    public String getAckTopic() {
+        return getString(AckTopic);
+    }
+
+    public String getUsername() {
+        return getString(Username);
+    }
+
+    public String getPassword() {
+        return getString(Password);
     }
 }
 
