@@ -41,8 +41,6 @@ public class GatewayHook extends AbstractGatewayModuleHook implements ModuleServ
                 
         gatewayContext.getUserSourceManager().registerContactType(NtfyNotificationProfileType.NTFY);
 
-        gatewayContext.getWebResourceManager().addServlet("ntfy", NtfyServlet.class);
-
         try {
             gatewayContext.getSchemaUpdater().updatePersistentRecords(NtfyNotificationProfileSettings.META);
         } catch (Exception e) {

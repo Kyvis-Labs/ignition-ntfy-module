@@ -21,10 +21,10 @@ public class NtfyNotificationProfileSettings extends PersistentRecord {
             ProfileId);
 
     public static final StringField ServerUrl = new StringField(META, "ServerUrl", SFieldFlags.SMANDATORY);
-    public static final StringField CallbackUrl = new StringField(META, "CallbackUrl");
+    public static final StringField AckTopic = new StringField(META, "AckTopic");
 
     static final Category API = new Category("NtfyNotificationProfileSettings.Category.API", 1)
-            .include(ServerUrl,CallbackUrl);
+            .include(ServerUrl,AckTopic);
 
     public static final StringField Username = new StringField(META,"Username");
     public static final StringField Password = new StringField(META,"Password");
@@ -58,8 +58,8 @@ public class NtfyNotificationProfileSettings extends PersistentRecord {
         return getString(ServerUrl);
     }
 
-    public String getCallbackUrl() {
-        return getString(CallbackUrl);
+    public String getAckTopic() {
+        return getString(AckTopic);
     }
 
     public String getUsername() {

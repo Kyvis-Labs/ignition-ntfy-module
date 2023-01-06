@@ -6,7 +6,7 @@
 
     <groupId>com.kyvislabs.ntfy</groupId>
     <artifactId>ntfy</artifactId>
-    <version>1.0.1</version>
+    <version>1.0.2</version>
     <packaging>pom</packaging>
 
     <modules>
@@ -15,8 +15,8 @@
     </modules>
 
     <properties>
-        <ignition-platform-version>8.1.0</ignition-platform-version>
-        <ignition-sdk-version>8.1.0</ignition-sdk-version>
+        <ignition-platform-version>8.1.23</ignition-platform-version>
+        <ignition-sdk-version>8.1.23</ignition-sdk-version>
         <module-name>ntfy Notification Module</module-name>
         <module-description>The module provides notifications through ntfy</module-description>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
