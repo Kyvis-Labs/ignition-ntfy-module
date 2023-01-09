@@ -80,11 +80,7 @@ public class NtfyNotificationProfile implements AlarmNotificationProfile {
     private final ScheduledExecutorService executor;
     private volatile ProfileStatus profileStatus = ProfileStatus.UNKNOWN;
     private Logger logger;
-    CompletableFuture ws;
-    ObjectMapper mapper = new ObjectMapper();
-    KeyGenerator keyGenerator;
-    private SecretKey key;
-    private Cipher encryptionCipher;
+    private NtfyAckSubscriber ackSubscriber;
 
     public NtfyNotificationProfile(final GatewayContext context,
             final AlarmNotificationProfileRecord profileRecord,
@@ -102,14 +98,6 @@ public class NtfyNotificationProfile implements AlarmNotificationProfile {
             auditProfileName = settingsRecord.getAuditProfileName();
         } catch (Exception e) {
             logger.error("Error retrieving notification profile details.", e);
-        }
-
-        try {
-            keyGenerator = KeyGenerator.getInstance("AES");
-            keyGenerator.init(256);
-            key = keyGenerator.generateKey();
-        } catch (NoSuchAlgorithmException e) {
-            logger.error("Error creating key generator.", e);
         }
 
     }
@@ -147,23 +135,19 @@ public class NtfyNotificationProfile implements AlarmNotificationProfile {
     @Override
     public void onShutdown() {
         executor.shutdown();
-        try {
-            ((WebSocket) ws.get()).sendClose(WebSocket.NORMAL_CLOSURE, "");
-        } catch (InterruptedException | ExecutionException e) {
-            logger.debug("Socket already closed",e);
-        }
+        ackSubscriber.getExecutor().shutdown();
     }
 
     @Override
     public void onStartup() {
         profileStatus = ProfileStatus.RUNNING;
-        createAckListener();
- 
+        this.ackSubscriber = new NtfyAckSubscriber(context, auditProfileName, serverUrl, ackTopic, username, password); 
     }
 
     @Override
     public void sendNotification(final NotificationContext notificationContext) {
         executor.execute(() -> {
+
 
             Collection<ContactInfo> contactInfos =
                     Collections2.filter(notificationContext.getUser().getContactInfo(), new IsNtfyContactInfo());
@@ -190,87 +174,84 @@ public class NtfyNotificationProfile implements AlarmNotificationProfile {
                 notificationContext.notificationDone();
                 return;
             }
-            try {
-                HttpClient httpClient = HttpClient.newHttpClient();
-                for (ContactInfo contactInfo : contactInfos) {
-                    String topic = contactInfo.getValue();
+            HttpClient httpClient = HttpClient.newHttpClient();
+            for (ContactInfo contactInfo : contactInfos) {
+                String topic = contactInfo.getValue();
 
-                    logger.debug(
-                            String.format("Attempting to send an alarm notification to topic %s via %s [message=%s, title=%s]",
-                                    notificationContext.getUser(),
-                                    topic,
-                                    message,
-                                    title)
-                    );
+                logger.debug(
+                        String.format("Attempting to send an alarm notification to topic %s via %s [message=%s, title=%s]",
+                                notificationContext.getUser(),
+                                topic,
+                                message,
+                                title)
+                );
 
-                    String ntfyUrl = String.format("%s/%s", serverUrl, topic);
+                String ntfyUrl = String.format("%s/%s", serverUrl, topic);
 
-                    var builder = HttpRequest.newBuilder();
+                var builder = HttpRequest.newBuilder();
 
-                    builder = builder
-                            .uri(URI.create(ntfyUrl))
-                            .header("Content-Type", "application/json")
-                            .timeout(Duration.ofSeconds(10))
-                            .POST(HttpRequest.BodyPublishers.ofString(message));
+                builder = builder
+                        .uri(URI.create(ntfyUrl))
+                        .header("Content-Type", "application/json")
+                        .timeout(Duration.ofSeconds(10))
+                        .POST(HttpRequest.BodyPublishers.ofString(message));
 
-                    if (!StringUtils.isBlank(username) && !StringUtils.isBlank(password)){
-                        String valueToEncode = username + ":" + password;
-                        builder.header("Authentication", "Basic " + Base64.getEncoder().encodeToString(valueToEncode.getBytes()));
-                    }
-
-                    if (!StringUtils.isBlank(title)) {
-                        builder.header("Title", title);
-                    }
-
-                    if (!StringUtils.isBlank(tags)) {
-                        builder.header("Tags", tags);
-                    }
-
-                    if (!StringUtils.isBlank(priority)) {
-                        builder.header("Priority", priority);
-                    }
-
-                    if (!StringUtils.isBlank(clickAction)) {
-                        builder.header("Click", clickAction);
-                    }
-
-                    if (!StringUtils.isBlank(attach)) {
-                        builder.header("Attach", attach);
-                    }
-
-                    if (!StringUtils.isBlank(actions)) {
-                        String[] parts = StringUtils.split(actions,";");
-                        if (parts.length > 3){
-                            parts = Arrays.copyOfRange(parts,0,3);
-                            actions = StringUtils.join(parts, ";");
-                        }
-                        builder.header("Action", actions);
-                    }
-
-                    if (!StringUtils.isBlank(icon)) {
-                        builder.header("Icon", icon);
-                    }
-
-                    final var request = builder.build();
-                    try {
-
-                        final var response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-                        if (!(response.statusCode() >= 200 && response.statusCode() <= 399)) {
-                            logger.error("Error sending notification: status code=" + response.statusCode() + ", response=" + response.body());
-                        }
- //                   } catch (IOException e) {
- //                       logger.error("Unable to send notification", e);
- //                       success = false;
-                    } catch (InterruptedException e) {
-                        logger.error("Unable to send notification", e);
-                        success = false;
-                    }
-
-                    audit(success, String.format("Ntfy message to topic %s", topic), notificationContext);
+                if (!StringUtils.isBlank(username) && !StringUtils.isBlank(password)){
+                    String valueToEncode = username + ":" + password;
+                    builder.header("Authentication", "Basic " + Base64.getEncoder().encodeToString(valueToEncode.getBytes()));
                 }
-            } catch (IOException ex) {
-                logger.error("Unable to send notification", ex);
+
+                if (!StringUtils.isBlank(title)) {
+                    builder.header("Title", title);
+                }
+
+                if (!StringUtils.isBlank(tags)) {
+                    builder.header("Tags", tags);
+                }
+
+                if (!StringUtils.isBlank(priority)) {
+                    builder.header("Priority", priority);
+                }
+
+                if (!StringUtils.isBlank(clickAction)) {
+                    builder.header("Click", clickAction);
+                }
+
+                if (!StringUtils.isBlank(attach)) {
+                    builder.header("Attach", attach);
+                }
+
+                if (!StringUtils.isBlank(actions)) {
+                    String[] parts = StringUtils.split(actions,";");
+                    if (parts.length > 3){
+                        parts = Arrays.copyOfRange(parts,0,3);
+                        actions = StringUtils.join(parts, ";");
+                    }
+                    builder.header("Action", actions);
+                }
+
+                if (!StringUtils.isBlank(icon)) {
+                    builder.header("Icon", icon);
+                }
+
+                final var request = builder.build();
+                try {
+
+                    final var response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+                    if (!(response.statusCode() >= 200 && response.statusCode() <= 399)) {
+                        logger.error("Error sending notification: status code=" + response.statusCode() + ", response=" + response.body());
+                    }
+                } catch (IOException e) {
+                    logger.error("Unable to send notification", e);
+                    success = false;
+                } catch (InterruptedException e) {
+                    logger.error("Unable to send notification", e);
+                    success = false;
+                }
+
+                audit(success, String.format("Ntfy message to topic %s", topic), notificationContext);
             }
+
 
             notificationContext.notificationDone();
         });
@@ -388,7 +369,7 @@ public class NtfyNotificationProfile implements AlarmNotificationProfile {
         if (!StringUtils.isBlank(ackTopic)){
             try {
                 String s = String.format("%s~%s",notificationContext.getAlarmEvents().get(0).getId().toString(),notificationContext.getUser().get(User.Username));
-                String encrypted = encrypt(s);
+                String encrypted = ackSubscriber.encrypt(s);
                 String ackAction = String.format("http, Ack Alarm, %s/%s, body=%s, method=POST, clear=true, headers.Cache=no ", serverUrl, ackTopic, encrypted);
                 actions = String.format("%s; %s",ackAction,actions);
                 if (logger.isDebugEnabled()){
@@ -399,123 +380,5 @@ public class NtfyNotificationProfile implements AlarmNotificationProfile {
             }
         }
         return actions;
-    }
-
-    private void createAckListener() {
-        try {
-            URL ntfyUrl = new URL(serverUrl);
-        
-            String protocol = "https".equals(ntfyUrl.getProtocol())?"wss":"ws";
-            String ackUrl = String.format("%s://%s/%s/ws",protocol,ntfyUrl.getHost(),ackTopic);
-            try {
-                HttpClient client = HttpClient.newBuilder()
-                .version(Version.HTTP_2)
-                .followRedirects(Redirect.NORMAL)
-                .connectTimeout(Duration.ofSeconds(20))
-                .build();
-
-                
-                ws = client.newWebSocketBuilder().connectTimeout(Duration.ofSeconds(10))
-                    .buildAsync(new URI(ackUrl), new Listener() {
-                        StringBuilder text = new StringBuilder();
-                        CompletableFuture<?> accumulatedMessage = new CompletableFuture<>();
-                        
-                        @Override
-                        public void onOpen(WebSocket webSocket) {
-                            Listener.super.onOpen(webSocket);
-                            logger.debug("Websocket open");
-                        }
-
-                        @Override
-                        public CompletionStage<?> onText(WebSocket webSocket, CharSequence data, boolean last) {
-                            text.append(data);
-                            webSocket.request(1);
-                            
-                            accumulatedMessage.complete(null);
-                            CompletionStage<?> cf = accumulatedMessage;
-                            accumulatedMessage = new CompletableFuture<>();
-
-                            if (last) {
-                                final var json = text.toString();
-                                text = new StringBuilder();
-                                try {
-                                    Message msg = mapper.readValue(json, Message.class);
-                                    if ("message".equals(msg.event)) {
-                                        String unencrypted = decrypt(msg.message);
-                                        AckMessage ack = AckMessage.fromNtfyMessage(unencrypted);
-                                        List<UUID> uuidToAck = new ArrayList<>();
-                                        uuidToAck.add(UUID.fromString(ack.event));
-
-                                        final var ackUser = new QualifiedPath.Builder().setProvider("default").setUser(ack.user).build();
-                                        PropertySet eventData = new PropertySetBuilder().set(CommonAlarmProperties.AckUser, ackUser).build();
-                                        context.getAlarmManager().acknowledgeBulk(uuidToAck,new EventData(eventData));
-                                    }
-
-                                } catch (JsonProcessingException e) {
-                                    logger.error("Message not valid",e);
-                                } catch (Exception e){
-                                    logger.error("Something is wrong",e);
-                                }
-
-                                return cf;
-                            }
-                            return cf;                    }
-                        @Override
-                        public CompletionStage<?> onClose(WebSocket webSocket, int statusCode, String reason) {
-                            webSocket.sendClose(WebSocket.NORMAL_CLOSURE, "");
-                            return Listener.super.onClose(webSocket, statusCode, reason);
-                        }
-                    });
-    
-            } catch (URISyntaxException e) {
-                logger.error("Error doing stuff",e);
-            }
-        } catch (MalformedURLException e1) {
-            logger.error("Issue starting web socket",e1);
-        }
-    }
-
-    public String encrypt(String data) throws InvalidKeyException, NoSuchAlgorithmException, NoSuchPaddingException, IllegalBlockSizeException, BadPaddingException {
-        byte[] dataInBytes = data.getBytes();
-        encryptionCipher = Cipher.getInstance("AES/GCM/NoPadding");
-        encryptionCipher.init(Cipher.ENCRYPT_MODE, key);
-        byte[] encryptedBytes = encryptionCipher.doFinal(dataInBytes);
-        return Base64.getEncoder().encodeToString(encryptedBytes);
-    }
-
-    private String decrypt(String encryptedData) throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, InvalidAlgorithmParameterException, IllegalBlockSizeException, BadPaddingException{
-        byte[] dataInBytes = Base64.getDecoder().decode(encryptedData);
-        Cipher decryptionCipher = Cipher.getInstance("AES/GCM/NoPadding");
-        GCMParameterSpec spec = new GCMParameterSpec(128, encryptionCipher.getIV());
-        decryptionCipher.init(Cipher.DECRYPT_MODE, key, spec);
-        byte[] decryptedBytes = decryptionCipher.doFinal(dataInBytes);
-        return new String(decryptedBytes);
-    }
-    @JsonAutoDetect(fieldVisibility = Visibility.ANY)
-    private static class Message {
-        String id;
-        Long time;
-        String event;
-        String topic;
-        String title;
-        String message;
-
-        public Message(){
-        }
-    }
-
-    @JsonAutoDetect(fieldVisibility = Visibility.ANY)
-    private static class AckMessage {
-        String event, user;
-        public static AckMessage fromNtfyMessage(String msg){
-            final String[] parts = msg.split("~");
-            return new AckMessage(parts[0],parts[1]);
-
-        }
-        public AckMessage(String event,String user){
-            this.event = event;
-            this.user = user;
-        }
-
     }
 }
