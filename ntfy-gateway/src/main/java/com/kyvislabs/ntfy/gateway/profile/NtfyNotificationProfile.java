@@ -8,15 +8,10 @@ import com.inductiveautomation.ignition.alarming.common.notification.Notificatio
 import com.inductiveautomation.ignition.alarming.notification.AlarmNotificationProfile;
 import com.inductiveautomation.ignition.alarming.notification.AlarmNotificationProfileRecord;
 import com.inductiveautomation.ignition.alarming.notification.NotificationContext;
-import com.inductiveautomation.ignition.common.QualifiedPath;
 import com.inductiveautomation.ignition.common.TypeUtilities;
 import com.inductiveautomation.ignition.common.WellKnownPathTypes;
 import com.inductiveautomation.ignition.common.alarming.AlarmEvent;
-import com.inductiveautomation.ignition.common.alarming.EventData;
-import com.inductiveautomation.ignition.common.alarming.config.CommonAlarmProperties;
 import com.inductiveautomation.ignition.common.config.FallbackPropertyResolver;
-import com.inductiveautomation.ignition.common.config.PropertySet;
-import com.inductiveautomation.ignition.common.config.PropertySetBuilder;
 import com.inductiveautomation.ignition.common.expressions.parsing.Parser;
 import com.inductiveautomation.ignition.common.expressions.parsing.StringParser;
 import com.inductiveautomation.ignition.common.model.ApplicationScope;
@@ -36,42 +31,17 @@ import com.inductiveautomation.ignition.gateway.model.ProfileStatus;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
 import java.io.IOException;
-import java.net.MalformedURLException;
 import java.net.URI;
-import java.net.URISyntaxException;
-import java.net.URL;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.net.http.WebSocket;
-import java.net.http.HttpClient.Redirect;
-import java.net.http.HttpClient.Version;
-import java.net.http.WebSocket.Listener;
-import java.security.InvalidAlgorithmParameterException;
-import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
-import java.util.concurrent.ExecutionException;
+
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 
-import javax.crypto.BadPaddingException;
-import javax.crypto.Cipher;
-import javax.crypto.IllegalBlockSizeException;
-import javax.crypto.KeyGenerator;
-import javax.crypto.NoSuchPaddingException;
-import javax.crypto.SecretKey;
-import javax.crypto.spec.GCMParameterSpec;
 import java.util.Base64;
-
-import com.fasterxml.jackson.annotation.JsonAutoDetect;
-import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
 
 public class NtfyNotificationProfile implements AlarmNotificationProfile {
 
@@ -99,7 +69,6 @@ public class NtfyNotificationProfile implements AlarmNotificationProfile {
         } catch (Exception e) {
             logger.error("Error retrieving notification profile details.", e);
         }
-
     }
 
     @Override
@@ -141,7 +110,7 @@ public class NtfyNotificationProfile implements AlarmNotificationProfile {
     @Override
     public void onStartup() {
         profileStatus = ProfileStatus.RUNNING;
-        this.ackSubscriber = new NtfyAckSubscriber(context, auditProfileName, serverUrl, ackTopic, username, password); 
+        this.ackSubscriber = new NtfyAckSubscriber(context, profileName, serverUrl, ackTopic); 
     }
 
     @Override
@@ -368,7 +337,7 @@ public class NtfyNotificationProfile implements AlarmNotificationProfile {
     private String generateActionsString(NotificationContext notificationContext, String actions){
         if (!StringUtils.isBlank(ackTopic)){
             try {
-                String s = String.format("%s~%s",notificationContext.getAlarmEvents().get(0).getId().toString(),notificationContext.getUser().get(User.Username));
+                String s = NtfyAckSubscriber.AckMessage.toString(notificationContext.getAlarmEvents().get(0).getId().toString(),notificationContext.getUser().get(User.Username));
                 String encrypted = ackSubscriber.encrypt(s);
                 String ackAction = String.format("http, Ack Alarm, %s/%s, body=%s, method=POST, clear=true, headers.Cache=no ", serverUrl, ackTopic, encrypted);
                 actions = String.format("%s; %s",ackAction,actions);

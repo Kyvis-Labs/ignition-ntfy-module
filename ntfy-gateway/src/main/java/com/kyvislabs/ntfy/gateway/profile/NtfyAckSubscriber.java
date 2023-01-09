@@ -50,7 +50,7 @@ public class NtfyAckSubscriber {
     private SecretKey key;
     private Cipher encryptionCipher;
 
-    public NtfyAckSubscriber(GatewayContext context, String profileName, String serverUrl, String topic, String httpUsername, String httpPassword) {
+    public NtfyAckSubscriber(GatewayContext context, String profileName, String serverUrl, String topic) {
 
         this.context = context;
         this.serverUrl = serverUrl;
@@ -74,7 +74,7 @@ public class NtfyAckSubscriber {
                 InputStream inputStream = null;
 
                 try {
-                    connection = getConnection(streamUrl, httpUsername, httpPassword);
+                    connection = getConnection(streamUrl);
 
                     inputStream = connection.getInputStream();
                     int responseCode = connection.getResponseCode();
@@ -87,7 +87,7 @@ public class NtfyAckSubscriber {
 
                         while(line != null){
                             ackAlarm(line);
-                            logger.debug(line);
+                            logger.trace(line);
                             line = reader.readLine();
                         }
                     } else {
@@ -123,23 +123,20 @@ public class NtfyAckSubscriber {
         try {
             responseCode = connection.getResponseCode();
             String responseMessage = connection.getResponseMessage();
-            logger.info("Non-success response: " + responseCode + " -- " + responseMessage);
+            logger.error("Non-success response: " + responseCode + " -- " + responseMessage);
         } catch (IOException e) {
-            logger.info("Error connecting to server",e);
+            logger.error("Error connecting to server",e);
         }
 
     }
 
-    private HttpURLConnection getConnection(String urlString, String username, String password)
+    private HttpURLConnection getConnection(String urlString)
             throws IOException {
         URL url = new URL(urlString);
 
         HttpURLConnection connection = (HttpURLConnection) url.openConnection();
         connection.setReadTimeout(1000 * 60 * 60);
         connection.setConnectTimeout(1000 * 10);
-
-        connection.setRequestProperty("Authorization", createAuthHeader(username, password));
-        connection.setRequestProperty("Accept-Encoding", "gzip");
 
         return connection;
     }
@@ -206,16 +203,21 @@ public class NtfyAckSubscriber {
     }
 
     @JsonAutoDetect(fieldVisibility = Visibility.ANY)
-    private static class AckMessage {
+    public static class AckMessage {
         String event, user;
+        static String delimiter = ";";
         public static AckMessage fromNtfyMessage(String msg){
-            final String[] parts = msg.split("~");
+            final String[] parts = msg.split(";");
             return new AckMessage(parts[0],parts[1]);
 
         }
         public AckMessage(String event,String user){
             this.event = event;
             this.user = user;
+        }
+
+        public static String toString(String event,String user){
+            return String.format("%s%s%s", event, delimiter, user);
         }
 
     }
