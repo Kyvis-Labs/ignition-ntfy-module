@@ -231,6 +231,34 @@ public class NtfyNotificationProfile implements AlarmNotificationProfile {
             } else {
                 expressionString = customPriority;
             }
+        } else if (property.equals(NtfyProperties.CLICK_ACTION)) {
+            String customClick = notificationContext.getAlarmEvents().get(0).get(NtfyProperties.CUSTOM_CLICK);
+            if (StringUtils.isBlank(customClick)) {
+                expressionString = notificationContext.getOrDefault(NtfyProperties.CLICK_ACTION);
+            } else {
+                expressionString = customClick;
+            }
+        } else if (property.equals(NtfyProperties.ATTACH)) {
+            String customAttach = notificationContext.getAlarmEvents().get(0).get(NtfyProperties.CUSTOM_ATTACH);
+            if (StringUtils.isBlank(customAttach)) {
+                expressionString = notificationContext.getOrDefault(NtfyProperties.ATTACH);
+            } else {
+                expressionString = customAttach;
+            }
+        } else if (property.equals(NtfyProperties.ACTIONS)) {
+            String customActions = notificationContext.getAlarmEvents().get(0).get(NtfyProperties.CUSTOM_ACTIONS);
+            if (StringUtils.isBlank(customActions)) {
+                expressionString = notificationContext.getOrDefault(NtfyProperties.ACTIONS);
+            } else {
+                expressionString = customActions;
+            }
+        } else if (property.equals(NtfyProperties.ICON)) {
+            String customIcon = notificationContext.getAlarmEvents().get(0).get(NtfyProperties.CUSTOM_ICON);
+            if (StringUtils.isBlank(customIcon)) {
+                expressionString = notificationContext.getOrDefault(NtfyProperties.ICON);
+            } else {
+                expressionString = customIcon;
+            }
         } else {
             expressionString = (String) notificationContext.getOrDefault(property);
         }
