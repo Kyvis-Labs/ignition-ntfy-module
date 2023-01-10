@@ -14,7 +14,22 @@
     <dependencies>
         <dependency>
             <groupId>com.kyvislabs.ntfy</groupId>
+            <artifactId>ntfy-common</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.kyvislabs.ntfy</groupId>
             <artifactId>ntfy-gateway</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.kyvislabs.ntfy</groupId>
+            <artifactId>ntfy-client</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.kyvislabs.ntfy</groupId>
+            <artifactId>ntfy-designer</artifactId>
             <version>${project.version}</version>
         </dependency>
     </dependencies>
@@ -38,6 +53,18 @@
 
                 <configuration>
                     <projectScopes>
+                        <projectScope>
+                            <name>ntfy-client</name>
+                            <scope>CD</scope>
+                        </projectScope>
+                        <projectScope>
+                            <name>ntfy-common</name>
+                            <scope>CDG</scope>
+                        </projectScope>
+                        <projectScope>
+                            <name>ntfy-designer</name>
+                            <scope>D</scope>
+                        </projectScope>
                         <projectScope>
                             <name>ntfy-gateway</name>
                             <scope>G</scope>
@@ -63,6 +90,14 @@
                         <hook>
                             <scope>G</scope>
                             <hookClass>com.kyvislabs.ntfy.gateway.GatewayHook</hookClass>
+                        </hook>
+                        <hook>
+                            <scope>C</scope>
+                            <hookClass>com.kyvislabs.ntfy.client.ClientHook</hookClass>
+                        </hook>
+                        <hook>
+                            <scope>D</scope>
+                            <hookClass>com.kyvislabs.ntfy.designer.DesignerHook</hookClass>
                         </hook>
                     </hooks>
 
