@@ -5,14 +5,14 @@
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <artifactId>ntfy</artifactId>
-		<groupId>com.kyvislabs.ntfy</groupId>
+        <groupId>com.kyvislabs.ntfy</groupId>
         <version>1.0.3</version>
     </parent>
 
-    <artifactId>ntfy-gateway</artifactId>
+    <artifactId>ntfy-client</artifactId>
 
     <dependencies>
-            <dependency>
+        <dependency>
             <groupId>com.kyvislabs.ntfy</groupId>
             <artifactId>ntfy-common</artifactId>
             <version>${project.version}</version>
@@ -26,29 +26,31 @@
         </dependency>
         <dependency>
             <groupId>com.inductiveautomation.ignitionsdk</groupId>
-            <artifactId>gateway-api</artifactId>
+            <artifactId>client-api</artifactId>
             <version>${ignition-sdk-version}</version>
             <type>pom</type>
             <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>com.inductiveautomation.ignitionsdk</groupId>
-            <artifactId>alarm-notification-common</artifactId>
+            <artifactId>designer-api</artifactId>
             <version>${ignition-sdk-version}</version>
             <type>pom</type>
             <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>com.inductiveautomation.ignitionsdk</groupId>
-            <artifactId>alarm-notification-gateway-api</artifactId>
+            <artifactId>vision-designer-api</artifactId>
             <version>${ignition-sdk-version}</version>
             <type>pom</type>
             <scope>provided</scope>
         </dependency>
         <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-databind</artifactId>
-            <version>2.12.1</version>
+            <groupId>com.inductiveautomation.ignitionsdk</groupId>
+            <artifactId>vision-client-api</artifactId>
+            <version>${ignition-sdk-version}</version>
+            <type>pom</type>
+            <scope>provided</scope>
         </dependency>
     </dependencies>
 
@@ -59,8 +61,8 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.2</version>
                 <configuration>
-                    <source>11</source>
-                    <target>11</target>
+                    <source>1.8</source>
+                    <target>1.8</target>
                 </configuration>
             </plugin>
         </plugins>

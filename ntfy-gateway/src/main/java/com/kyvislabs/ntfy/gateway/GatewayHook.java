@@ -4,9 +4,13 @@ import com.inductiveautomation.ignition.alarming.AlarmNotificationContext;
 import com.inductiveautomation.ignition.alarming.common.ModuleMeta;
 import com.inductiveautomation.ignition.common.BundleUtil;
 import com.inductiveautomation.ignition.common.licensing.LicenseState;
+import com.inductiveautomation.ignition.common.script.ScriptManager;
+import com.inductiveautomation.ignition.common.script.hints.PropertiesFileDocProvider;
+import com.inductiveautomation.ignition.gateway.clientcomm.ClientReqSession;
 import com.inductiveautomation.ignition.gateway.model.AbstractGatewayModuleHook;
 import com.inductiveautomation.ignition.gateway.model.GatewayContext;
 import com.inductiveautomation.ignition.gateway.services.ModuleServiceConsumer;
+import com.kyvislabs.ntfy.common.scripting.NtfyClientImpl;
 import com.kyvislabs.ntfy.gateway.profile.NtfyNotificationProfileSettings;
 import com.kyvislabs.ntfy.gateway.profile.NtfyNotificationProfileType;
 import com.kyvislabs.ntfy.gateway.profile.NtfyProperties;
@@ -19,6 +23,7 @@ public class GatewayHook extends AbstractGatewayModuleHook implements ModuleServ
 
     protected static GatewayContext gatewayContext;
     private volatile AlarmNotificationContext notificationContext;
+    private final NtfyClientImpl ntfyClient = new NtfyClientImpl();
 
     @Override
     public void setup(GatewayContext gatewayContext) {
@@ -102,5 +107,15 @@ public class GatewayHook extends AbstractGatewayModuleHook implements ModuleServ
     @Override
     public boolean isFreeModule() {
         return true;
+    }
+    @Override
+    public void initializeScriptManager(ScriptManager manager) {
+        super.initializeScriptManager(manager);
+        manager.addScriptModule("system.ntfy", ntfyClient, new PropertiesFileDocProvider());
+    }
+
+    @Override
+    public Object getRPCHandler(ClientReqSession session, String projectName) {
+        return ntfyClient;
     }
 }

@@ -10,7 +10,10 @@
     <packaging>pom</packaging>
 
     <modules>
+        <module>ntfy-common</module>
         <module>ntfy-gateway</module>
+        <module>ntfy-client</module>
+        <module>ntfy-designer</module>
         <module>ntfy-build</module>
     </modules>
 
