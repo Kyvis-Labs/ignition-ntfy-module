@@ -121,6 +121,30 @@ public class NtfyProperties {
             "NtfyNotification.Properties.ExtendedConfig.Category",
             "NtfyNotification.Properties.ExtendedConfig.CustomPriority.Desc", true, false);
 
+    public static AlarmProperty<String> CUSTOM_CLICK = new BasicAlarmProperty<>("CustomNtfyClick",
+            String.class, "",
+            "NtfyNotification.Properties.ExtendedConfig.CustomClick",
+            "NtfyNotification.Properties.ExtendedConfig.Category",
+            "NtfyNotification.Properties.ExtendedConfig.CustomClick.Desc", true, false);
+
+    public static AlarmProperty<String> CUSTOM_ACTIONS = new BasicAlarmProperty<>("CustomNtfyActions",
+            String.class, "",
+            "NtfyNotification.Properties.ExtendedConfig.CustomActions",
+            "NtfyNotification.Properties.ExtendedConfig.Category",
+            "NtfyNotification.Properties.ExtendedConfig.CustomActions.Desc", true, false);
+
+    public static AlarmProperty<String> CUSTOM_ATTACH = new BasicAlarmProperty<>("CustomNtfyAttach",
+            String.class, "",
+            "NtfyNotification.Properties.ExtendedConfig.CustomAttach",
+            "NtfyNotification.Properties.ExtendedConfig.Category",
+            "NtfyNotification.Properties.ExtendedConfig.CustomAttach.Desc", true, false);
+
+    public static AlarmProperty<String> CUSTOM_ICON = new BasicAlarmProperty<>("CustomNtfyIcon",
+            String.class, "",
+            "NtfyNotification.Properties.ExtendedConfig.CustomIcon",
+            "NtfyNotification.Properties.ExtendedConfig.Category",
+            "NtfyNotification.Properties.ExtendedConfig.CustomIcon.Desc", true, false);
+
     static {
         MESSAGE.setExpressionSource(true);
         MESSAGE.setDefaultValue(i18n("NtfyNotification." + "Properties.Message.DefaultValue"));

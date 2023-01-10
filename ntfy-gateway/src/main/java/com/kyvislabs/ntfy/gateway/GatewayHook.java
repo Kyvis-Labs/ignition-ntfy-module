@@ -43,7 +43,19 @@ public class GatewayHook extends AbstractGatewayModuleHook implements ModuleServ
 
         gatewayContext.getAlarmManager()
                 .registerExtendedConfigProperties(ModuleMeta.MODULE_ID, NtfyProperties.CUSTOM_TAGS);
+
+        gatewayContext.getAlarmManager()
+            .registerExtendedConfigProperties(ModuleMeta.MODULE_ID, NtfyProperties.CUSTOM_CLICK);
+        
+        gatewayContext.getAlarmManager()
+            .registerExtendedConfigProperties(ModuleMeta.MODULE_ID, NtfyProperties.CUSTOM_ATTACH);
                 
+        gatewayContext.getAlarmManager()
+            .registerExtendedConfigProperties(ModuleMeta.MODULE_ID, NtfyProperties.CUSTOM_ACTIONS);
+
+        gatewayContext.getAlarmManager()
+            .registerExtendedConfigProperties(ModuleMeta.MODULE_ID, NtfyProperties.CUSTOM_ICON);
+
         gatewayContext.getUserSourceManager().registerContactType(NtfyNotificationProfileType.NTFY);
 
         try {
