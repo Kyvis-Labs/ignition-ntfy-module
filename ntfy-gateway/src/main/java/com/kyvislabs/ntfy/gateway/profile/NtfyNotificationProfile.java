@@ -99,7 +99,7 @@ public class NtfyNotificationProfile implements AlarmNotificationProfile {
     @Override
     public void onShutdown() {
         executor.shutdown();
-        ackSubscriber.getExecutor().shutdown();
+        ackSubscriber.getExecutor().shutdownNow();
     }
 
     @Override
