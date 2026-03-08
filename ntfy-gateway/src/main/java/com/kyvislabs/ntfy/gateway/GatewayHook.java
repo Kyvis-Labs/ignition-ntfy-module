@@ -1,73 +1,60 @@
 package com.kyvislabs.ntfy.gateway;
 
-import com.inductiveautomation.ignition.alarming.AlarmNotificationContext;
-import com.inductiveautomation.ignition.alarming.common.ModuleMeta;
+import com.inductiveautomation.ignition.alarming.notification.AlarmNotificationProfileConfig;
+import com.inductiveautomation.ignition.alarming.notification.AlarmNotificationProfileRecord;
 import com.inductiveautomation.ignition.common.BundleUtil;
 import com.inductiveautomation.ignition.common.licensing.LicenseState;
 import com.inductiveautomation.ignition.common.script.ScriptManager;
 import com.inductiveautomation.ignition.common.script.hints.PropertiesFileDocProvider;
-import com.inductiveautomation.ignition.gateway.clientcomm.ClientReqSession;
+import com.inductiveautomation.ignition.gateway.config.ExtensionPoint;
+import com.inductiveautomation.ignition.gateway.config.migration.ExtensionPointRecordMigrationStrategy;
+import com.inductiveautomation.ignition.gateway.config.migration.IdbMigrationStrategy;
 import com.inductiveautomation.ignition.gateway.model.AbstractGatewayModuleHook;
 import com.inductiveautomation.ignition.gateway.model.GatewayContext;
-import com.inductiveautomation.ignition.gateway.services.ModuleServiceConsumer;
+import com.inductiveautomation.ignition.gateway.rpc.GatewayRpcImplementation;
 import com.kyvislabs.ntfy.common.scripting.NtfyClientImpl;
+import com.kyvislabs.ntfy.common.scripting.NtfyClientScripts;
+import com.kyvislabs.ntfy.gateway.profile.NtfyNotificationExtensionPoint;
 import com.kyvislabs.ntfy.gateway.profile.NtfyNotificationProfileSettings;
-import com.kyvislabs.ntfy.gateway.profile.NtfyNotificationProfileType;
 import com.kyvislabs.ntfy.gateway.profile.NtfyProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class GatewayHook extends AbstractGatewayModuleHook implements ModuleServiceConsumer {
+import java.util.List;
+import java.util.Optional;
+
+import static com.kyvislabs.ntfy.gateway.profile.NtfyNotificationExtensionPoint.NTFY;
+
+public class GatewayHook extends AbstractGatewayModuleHook {
     public static final String MODULE_ID = "com.kyvislabs.ntfy";
     private final Logger logger = LoggerFactory.getLogger("Ntfy.Gateway.Hook");
 
-    protected static GatewayContext gatewayContext;
-    private volatile AlarmNotificationContext notificationContext;
+    private GatewayContext gatewayContext;
     private final NtfyClientImpl ntfyClient = new NtfyClientImpl();
 
     @Override
-    public void setup(GatewayContext gatewayContext) {
-        GatewayHook.gatewayContext = gatewayContext;
+    public void setup(GatewayContext context) {
+        this.gatewayContext = context;
         BundleUtil.get().addBundle("NtfyNotification", getClass(), "NtfyNotification");
 
-        gatewayContext.getModuleServicesManager().subscribe(AlarmNotificationContext.class, this);
+        context.getAlarmManager()
+                .registerExtendedConfigProperties(MODULE_ID, NtfyProperties.CUSTOM_TITLE);
+        context.getAlarmManager()
+                .registerExtendedConfigProperties(MODULE_ID, NtfyProperties.CUSTOM_MESSAGE);
+        context.getAlarmManager()
+                .registerExtendedConfigProperties(MODULE_ID, NtfyProperties.CUSTOM_PRIORITY);
+        context.getAlarmManager()
+                .registerExtendedConfigProperties(MODULE_ID, NtfyProperties.CUSTOM_TAGS);
+        context.getAlarmManager()
+                .registerExtendedConfigProperties(MODULE_ID, NtfyProperties.CUSTOM_CLICK);
+        context.getAlarmManager()
+                .registerExtendedConfigProperties(MODULE_ID, NtfyProperties.CUSTOM_ATTACH);
+        context.getAlarmManager()
+                .registerExtendedConfigProperties(MODULE_ID, NtfyProperties.CUSTOM_ACTIONS);
+        context.getAlarmManager()
+                .registerExtendedConfigProperties(MODULE_ID, NtfyProperties.CUSTOM_ICON);
 
-        gatewayContext.getAlarmManager()
-                .registerExtendedConfigProperties(ModuleMeta.MODULE_ID, NtfyProperties.CUSTOM_TITLE);
-
-        gatewayContext.getAlarmManager()
-                .registerExtendedConfigProperties(ModuleMeta.MODULE_ID, NtfyProperties.CUSTOM_MESSAGE);
-
-        gatewayContext.getAlarmManager()
-                .registerExtendedConfigProperties(ModuleMeta.MODULE_ID, NtfyProperties.CUSTOM_PRIORITY);
-
-        gatewayContext.getAlarmManager()
-                .registerExtendedConfigProperties(ModuleMeta.MODULE_ID, NtfyProperties.CUSTOM_TAGS);
-
-        gatewayContext.getAlarmManager()
-            .registerExtendedConfigProperties(ModuleMeta.MODULE_ID, NtfyProperties.CUSTOM_CLICK);
-        
-        gatewayContext.getAlarmManager()
-            .registerExtendedConfigProperties(ModuleMeta.MODULE_ID, NtfyProperties.CUSTOM_ATTACH);
-                
-        gatewayContext.getAlarmManager()
-            .registerExtendedConfigProperties(ModuleMeta.MODULE_ID, NtfyProperties.CUSTOM_ACTIONS);
-
-        gatewayContext.getAlarmManager()
-            .registerExtendedConfigProperties(ModuleMeta.MODULE_ID, NtfyProperties.CUSTOM_ICON);
-
-        gatewayContext.getUserSourceManager().registerContactType(NtfyNotificationProfileType.NTFY);
-
-        try {
-            gatewayContext.getSchemaUpdater().updatePersistentRecords(NtfyNotificationProfileSettings.META);
-        } catch (Exception e) {
-            logger.error("Error configuring internal database", e);
-        }
-    }
-
-    @Override
-    public void notifyLicenseStateChanged(LicenseState licenseState) {
-
+        context.getUserSourceManager().registerContactType(NTFY);
     }
 
     @Override
@@ -76,39 +63,26 @@ public class GatewayHook extends AbstractGatewayModuleHook implements ModuleServ
 
     @Override
     public void shutdown() {
-        gatewayContext.getModuleServicesManager().unsubscribe(AlarmNotificationContext.class, this);
-
-        if (notificationContext != null) {
-            try {
-                notificationContext.getAlarmNotificationManager().removeAlarmNotificationProfileType(
-                        new NtfyNotificationProfileType());
-            } catch (Exception e) {
-                logger.error("Error removing notification profile.", e);
-            }
-        }
-        gatewayContext.getWebResourceManager().removeServlet("ntfy");
+        gatewayContext.getUserSourceManager().unregisterContactType(NTFY);
         BundleUtil.get().removeBundle("NtfyNotification");
-        BundleUtil.get().removeBundle("NtfyNotificationProfileSettings");
+    }
+
+    @SuppressWarnings("deprecation")
+    @Override
+    public List<IdbMigrationStrategy> getRecordMigrationStrategies() {
+        return List.of(ExtensionPointRecordMigrationStrategy
+                .newBuilder(NtfyNotificationExtensionPoint.TYPE_ID)
+                .resourceType(AlarmNotificationProfileConfig.RESOURCE_TYPE)
+                .profileMeta(AlarmNotificationProfileRecord.META)
+                .settingsRecordForeignKey(NtfyNotificationProfileSettings.Profile)
+                .settingsMeta(NtfyNotificationProfileSettings.META)
+                .build()
+        );
     }
 
     @Override
-    public void serviceReady(Class<?> serviceClass) {
-        if (serviceClass == AlarmNotificationContext.class) {
-            notificationContext = gatewayContext.getModuleServicesManager()
-                    .getService(AlarmNotificationContext.class);
-
-            try {
-                notificationContext.getAlarmNotificationManager().addAlarmNotificationProfileType(
-                        new NtfyNotificationProfileType());
-            } catch (Exception e) {
-                logger.error("Error adding notification profile.", e);
-            }
-        }
-    }
-
-    @Override
-    public void serviceShutdown(Class<?> arg0) {
-        notificationContext = null;
+    public List<? extends ExtensionPoint<?>> getExtensionPoints() {
+        return List.of(new NtfyNotificationExtensionPoint());
     }
 
     @Override
@@ -120,6 +94,7 @@ public class GatewayHook extends AbstractGatewayModuleHook implements ModuleServ
     public boolean isFreeModule() {
         return true;
     }
+
     @Override
     public void initializeScriptManager(ScriptManager manager) {
         super.initializeScriptManager(manager);
@@ -127,7 +102,10 @@ public class GatewayHook extends AbstractGatewayModuleHook implements ModuleServ
     }
 
     @Override
-    public Object getRPCHandler(ClientReqSession session, String projectName) {
-        return ntfyClient;
+    public Optional<GatewayRpcImplementation> getRpcImplementation() {
+        return Optional.of(GatewayRpcImplementation.of(
+                NtfyClientScripts.SERIALIZER,
+                ntfyClient
+        ));
     }
 }

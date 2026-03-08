@@ -6,7 +6,7 @@
     <parent>
         <artifactId>ntfy</artifactId>
 		<groupId>com.kyvislabs.ntfy</groupId>
-        <version>1.1.2</version>
+        <version>8.3.4</version>
     </parent>
 
     <artifactId>ntfy-build</artifactId>
@@ -76,7 +76,6 @@
                     <moduleDescription>${module-description}</moduleDescription>
                     <moduleVersion>${project.version}.${timestamp}</moduleVersion>
                     <requiredIgnitionVersion>${ignition-platform-version}</requiredIgnitionVersion>
-                    <requiredFrameworkVersion>8</requiredFrameworkVersion>
                     <licenseFile>license.html</licenseFile>
 
                     <depends>

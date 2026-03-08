@@ -1,17 +1,16 @@
 package com.kyvislabs.ntfy.common.scripting;
 
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.python.core.PyObject;
-import org.python.netty.util.internal.StringUtil;
 
 import com.inductiveautomation.ignition.common.BundleUtil;
+import com.inductiveautomation.ignition.common.script.PyArgParser;
 import com.inductiveautomation.ignition.common.script.builtin.KeywordArgs;
-import com.inductiveautomation.ignition.common.script.builtin.PyArgumentMap;
-import com.inductiveautomation.ignition.common.script.hints.NoHint;
-import com.inductiveautomation.ignition.common.script.hints.ScriptFunction;
+import com.inductiveautomation.ignition.common.script.hints.JythonElement;
+import com.inductiveautomation.ignition.common.script.hints.ScriptArg;
 
-public abstract class AbstractScriptModule implements NtfyClientScripts 
-{
+public abstract class AbstractScriptModule {
     static {
         BundleUtil.get().addBundle(
             AbstractScriptModule.class.getSimpleName(),
@@ -19,55 +18,45 @@ public abstract class AbstractScriptModule implements NtfyClientScripts
             AbstractScriptModule.class.getName().replace('.', '/')
         );
     }
-    public Logger logger = Logger.getLogger("ntfy.scripting.client");
-    @ScriptFunction(docBundlePrefix = "AbstractScriptModule")
+
+    public Logger logger = LoggerFactory.getLogger("ntfy.scripting.client");
+
     @KeywordArgs(
-        names={"serverUrl", "topic", "message","title","tags","priority","clickAction","attach","actions","icon","username","password"}, 
+        names={"serverUrl", "topic", "message", "title", "tags", "priority", "clickAction", "attach", "actions", "icon", "username", "password"},
         types={String.class, String.class, String.class, String.class, String.class, String.class, String.class, String.class, String.class, String.class, String.class, String.class}
     )
+    @JythonElement(docBundlePrefix = "AbstractScriptModule")
     public boolean sendMessage(PyObject[] pyArgs, String[] keywords) throws Exception {
-            PyArgumentMap args = PyArgumentMap.interpretPyArgs(pyArgs, keywords, AbstractScriptModule.class, "sendMessage");    
+        PyArgParser args = PyArgParser.parseArgs(
+            pyArgs, keywords,
+            new String[]{"serverUrl", "topic", "message", "title", "tags", "priority", "clickAction", "attach", "actions", "icon", "username", "password"},
+            new Class<?>[]{String.class, String.class, String.class, String.class, String.class, String.class, String.class, String.class, String.class, String.class, String.class, String.class},
+            "sendMessage"
+        );
 
-            String serverUrl = args.getStringArg("serverUrl");
-            if (StringUtil.isNullOrEmpty(serverUrl)){
-                logger.error("Invalid Server URL");
-                return false;
-            }
+        String serverUrl = args.requireString("serverUrl");
+        String topic = args.requireString("topic");
+        String message = args.requireString("message");
+        String title = args.getString("title").orElse("");
+        String tags = args.getString("tags").orElse("");
+        String priority = args.getString("priority").orElse("");
+        String clickAction = args.getString("clickAction").orElse("");
+        String attach = args.getString("attach").orElse("");
+        String actions = args.getString("actions").orElse("");
+        String icon = args.getString("icon").orElse("");
+        String username = args.getString("username").orElse("");
+        String password = args.getString("password").orElse("");
 
-            String topic = args.getStringArg("topic");
-            if (StringUtil.isNullOrEmpty(topic)){
-                logger.error("Invalid Topic");
-                return false;
-
-            }
-
-            String message = args.getStringArg("message");
-            if (StringUtil.isNullOrEmpty(message)){
-                logger.error("Invalid Message");
-                return false;
-
-            }
-
-            String title = args.getStringArg("title","");
-            String tags = args.getStringArg("tags");
-            String priority = args.getStringArg("priority");
-            String clickAction = args.getStringArg("clickAction");
-            String attach = args.getStringArg("attach");
-            String actions = args.getStringArg("actions");
-            String icon = args.getStringArg("icon");
-            String username = args.getStringArg("username");
-            String password = args.getStringArg("password");
-            return sendMessageImpl(serverUrl, topic, message, title, tags, priority, clickAction, attach, actions, icon, username, password);
+        return sendMessageImpl(serverUrl, topic, message, title, tags, priority, clickAction, attach, actions, icon, username, password);
     }
 
-    @NoHint
-    @Override
     public boolean sendMessage(String serverUrl, String topic, String message, String title, String tags,
             String priority, String clickAction, String attach, String actions, String icon, String username,
             String password) {
         return sendMessageImpl(serverUrl, topic, message, title, tags, priority, clickAction, attach, actions, icon, username, password);
     }
 
-    @NoHint
-    protected abstract boolean sendMessageImpl(String serverUrl, String topic, String message, String title, String tags, String priority, String clickAction, String attach, String actions, String icon, String username, String password);
+    protected abstract boolean sendMessageImpl(String serverUrl, String topic, String message, String title,
+            String tags, String priority, String clickAction, String attach, String actions, String icon,
+            String username, String password);
 }

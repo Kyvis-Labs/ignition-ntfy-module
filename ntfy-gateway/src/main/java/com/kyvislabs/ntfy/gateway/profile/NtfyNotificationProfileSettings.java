@@ -3,8 +3,13 @@ package com.kyvislabs.ntfy.gateway.profile;
 import com.inductiveautomation.ignition.alarming.notification.AlarmNotificationProfileRecord;
 import com.inductiveautomation.ignition.gateway.audit.AuditProfileRecord;
 import com.inductiveautomation.ignition.gateway.localdb.persistence.*;
-import simpleorm.dataset.SFieldFlags;
 
+/**
+ * Legacy configuration record, kept for backwards compatibility with 8.1 installations.
+ * The migration strategy in GatewayHook converts these records to the new
+ * NtfyNotificationProfileResource format.
+ */
+@SuppressWarnings("deprecation")
 public class NtfyNotificationProfileSettings extends PersistentRecord {
 
     public static final RecordMeta<NtfyNotificationProfileSettings> META =
@@ -20,29 +25,15 @@ public class NtfyNotificationProfileSettings extends PersistentRecord {
             "Profile",
             ProfileId);
 
-    public static final StringField ServerUrl = new StringField(META, "ServerUrl", SFieldFlags.SMANDATORY);
+    public static final StringField ServerUrl = new StringField(META, "ServerUrl");
     public static final StringField AckTopic = new StringField(META, "AckTopic");
 
-    static final Category API = new Category("NtfyNotificationProfileSettings.Category.API", 1)
-            .include(ServerUrl,AckTopic);
+    public static final StringField Username = new StringField(META, "Username");
+    public static final StringField Password = new StringField(META, "Password");
 
-    public static final StringField Username = new StringField(META,"Username");
-    public static final StringField Password = new StringField(META,"Password");
-
-    static final Category Authentication = new Category("NtfyNotificationProfileSettings.Category.Authentication",2)
-        .include(Username,Password);
-
-        public static final LongField AuditProfileId = new LongField(META, "AuditProfileId");
+    public static final LongField AuditProfileId = new LongField(META, "AuditProfileId");
     public static final ReferenceField<AuditProfileRecord> AuditProfile = new ReferenceField<>(
             META, AuditProfileRecord.META, "AuditProfile", AuditProfileId);
-
-
-    static final Category Auditing = new Category("NtfyNotificationProfileSettings.Category.Auditing", 3)
-            .include(AuditProfile);
-
-    static {
-        Profile.getFormMeta().setVisible(false);
-    }
 
     @Override
     public RecordMeta<?> getMeta() {
@@ -70,4 +61,3 @@ public class NtfyNotificationProfileSettings extends PersistentRecord {
         return getString(Password);
     }
 }
-

@@ -10,11 +10,12 @@ import java.util.Arrays;
 import java.util.Base64;
 
 import org.apache.commons.lang3.StringUtils;
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class NtfyClient {
     private final HttpClient httpClient = HttpClient.newHttpClient();
-    private Logger logger = Logger.getLogger("ntfy.client");
+    private final Logger logger = LoggerFactory.getLogger("ntfy.client");
 
     public boolean sendMessage(String serverUrl, String topic, String message, String title, String tags, String priority, String clickAction, String attach, String actions, String icon, String username, String password) {
         
